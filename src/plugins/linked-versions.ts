@@ -39,6 +39,7 @@ export class LinkedVersions extends ManifestPlugin {
   readonly groupName: string;
   readonly components: Set<string>;
   readonly merge: boolean;
+  primaryVersion: Version | undefined;
 
   constructor(
     github: Scm,
@@ -102,7 +103,7 @@ export class LinkedVersions extends ManifestPlugin {
       return strategiesByPath;
     }
 
-    const primaryVersion = versions.reduce(
+    this.primaryVersion = versions.reduce(
       (collector, version) =>
         collector.compare(version) > 0 ? collector : version,
       versions[0]
@@ -113,14 +114,14 @@ export class LinkedVersions extends ManifestPlugin {
       if (path in groupStrategies) {
         const component = await strategiesByPath[path].getComponent();
         this.logger.info(
-          `Replacing strategy for path ${path} with forced version: ${primaryVersion}`
+          `Replacing strategy for path ${path} with forced version: ${this.primaryVersion}`
         );
         newStrategies[path] = await buildStrategy({
           ...this.repositoryConfig[path],
           github: this.github,
           path,
           targetBranch: this.targetBranch,
-          releaseAs: primaryVersion.toString(),
+          releaseAs: this.primaryVersion.toString(),
         });
         if (missingReleasePaths.has(path)) {
           this.logger.debug(`Appending fake commit for path: ${path}`);
@@ -128,7 +129,7 @@ export class LinkedVersions extends ManifestPlugin {
             sha: '',
             message: `chore(${component}): Synchronize ${
               this.groupName
-            } versions\n\nRelease-As: ${primaryVersion.toString()}`,
+            } versions\n\nRelease-As: ${this.primaryVersion.toString()}`,
           });
         }
       } else {
@@ -173,12 +174,13 @@ export class LinkedVersions extends ManifestPlugin {
 
     // delegate to the merge plugin and add merged pull request
     if (inScopeCandidates.length > 0) {
+      const version = this.primaryVersion ? ` ${this.primaryVersion}` : '';
       const merge = new Merge(
         this.github,
         this.targetBranch,
         this.repositoryConfig,
         {
-          pullRequestTitlePattern: `chore\${scope}: release ${this.groupName} libraries`,
+          pullRequestTitlePattern: `chore\${scope}: release ${this.groupName}${version} libraries`,
           forceMerge: true,
           headBranchName: BranchName.ofGroupTargetBranch(
             this.groupName,
