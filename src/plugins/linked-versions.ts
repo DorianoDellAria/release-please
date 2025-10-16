@@ -174,12 +174,13 @@ export class LinkedVersions extends ManifestPlugin {
 
     // delegate to the merge plugin and add merged pull request
     if (inScopeCandidates.length > 0) {
+      const version = this.primaryVersion ? ` ${this.primaryVersion}` : '';
       const merge = new Merge(
         this.github,
         this.targetBranch,
         this.repositoryConfig,
         {
-          pullRequestTitlePattern: `chore\${scope}: release ${this.groupName} ${this.primaryVersion} libraries`,
+          pullRequestTitlePattern: `chore\${scope}: release ${this.groupName}${version} libraries`,
           forceMerge: true,
           headBranchName: BranchName.ofGroupTargetBranch(
             this.groupName,
